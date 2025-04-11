@@ -21,8 +21,9 @@ export function FileUploader({ onUpload, onClose }: FileUploaderProps) {
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
       'application/vnd.ms-excel': ['.xls'],
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
+      'audio/*': ['.mp3', '.ogg', '.wav', '.m4a'], // Soporte para archivos de audio
     },
-    maxSize: 5242880, // 5MB
+    maxSize: 10485760, // 10MB
   });
 
   return (
@@ -52,7 +53,7 @@ export function FileUploader({ onUpload, onClose }: FileUploaderProps) {
             <>
               <p className="text-gray-600">Drag and drop files here, or click to select files</p>
               <p className="text-sm text-gray-500 mt-2">
-                Supported formats: Images, PDF, DOC, DOCX, XLS, XLSX (Max 5MB)
+                Supported formats: Images, PDF, DOC, DOCX, XLS, XLSX, Audio (MP3, OGG, WAV, M4A) (Max 10MB)
               </p>
             </>
           )}

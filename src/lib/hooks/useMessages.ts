@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../supabase';
 import type { Message } from '../types';
+import { uploadFileToSupabase, getMessageTypeFromFile } from '../utils/fileUpload';
 
 /**
  * Sends a message to the webhook directly
@@ -24,13 +25,50 @@ export async function sendMessageToWebhook(message: any) {
     
     const webhookUrl = settingsData.value;
     
+    // Get the client's phone number from the database
+    const { data: clientData, error: clientError } = await supabase
+      .from('conversations')
+      .select('client_id')
+      .eq('id', message.conversation_id)
+      .single();
+    
+    if (clientError || !clientData) {
+      console.error('Error getting client ID:', clientError);
+      // Continue without the phone number rather than failing
+    }
+    
+    let clientPhone = null;
+    
+    if (clientData?.client_id) {
+      // Get the client's phone number
+      const { data: client, error: clientPhoneError } = await supabase
+        .from('clients')
+        .select('phone')
+        .eq('id', clientData.client_id)
+        .single();
+        
+      if (!clientPhoneError && client) {
+        clientPhone = client.phone;
+      } else {
+        console.error('Error getting client phone:', clientPhoneError);
+      }
+    }
+    
+    // Add the phone number to the message payload
+    const messageWithPhone = {
+      ...message,
+      phone: clientPhone
+    };
+    
+    console.log('Sending message with phone to webhook:', messageWithPhone);
+    
     // Send the message to the webhook
     const response = await fetch(webhookUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify(message)
+      body: JSON.stringify(messageWithPhone)
     });
     
     if (!response.ok) {
@@ -163,12 +201,95 @@ export function useMessages(conversationId: string | null) {
     }
   };
 
+  // Mutation para enviar mensajes con archivos
+  const sendFileMessage = useMutation({
+    mutationFn: async ({ 
+      file, 
+      conversationId, 
+      sender, 
+      senderId 
+    }: {
+      file: File;
+      conversationId: string;
+      sender: 'agent' | 'client';
+      senderId: string;
+    }) => {
+      console.log('Sending file message:', { fileName: file.name, fileType: file.type, fileSize: file.size });
+      
+      try {
+        // Subir archivo a Supabase Storage
+        const fileData = await uploadFileToSupabase(file, conversationId);
+        
+        // Determinar el tipo de mensaje basado en el MIME type
+        const messageType = getMessageTypeFromFile(file.type);
+        
+        // Insertar mensaje en la base de datos
+        const { data, error } = await supabase
+          .from('messages')
+          .insert([
+            {
+              conversation_id: conversationId,
+              content: fileData.url, // URL del archivo
+              sender,
+              sender_id: senderId,
+              type: messageType,
+              status: 'sent',
+              file_url: fileData.url,
+              file_name: fileData.name,
+              file_size: fileData.size
+            }
+          ])
+          .select();
+          
+        if (error) {
+          console.error('Error inserting file message:', error);
+          throw error;
+        }
+        
+        console.log('File message inserted successfully:', data);
+        
+        // Como respaldo, también enviar el mensaje al webhook directamente
+        if (sender === 'agent') {
+          sendMessageToWebhook({
+            id: data[0].id,
+            conversation_id: data[0].conversation_id,
+            content: data[0].content,
+            sender: data[0].sender,
+            sender_id: data[0].sender_id,
+            type: data[0].type,
+            status: data[0].status,
+            file_url: data[0].file_url,
+            file_name: data[0].file_name,
+            file_size: data[0].file_size,
+            created_at: data[0].created_at
+          }).catch(err => {
+            console.error('Error in backup webhook send for file:', err);
+          });
+        }
+        
+        return data;
+      } catch (error) {
+        console.error('Error in file message sending process:', error);
+        throw error;
+      }
+    },
+    onSuccess: (data) => {
+      console.log('File message mutation succeeded:', data);
+      queryClient.invalidateQueries({ queryKey: ['messages', conversationId] });
+      queryClient.invalidateQueries({ queryKey: ['conversations'] });
+    },
+    onError: (error) => {
+      console.error('File message mutation failed:', error);
+    },
+  });
+
   return {
     messages: query.data || [],
     isLoading: query.isLoading,
     error: query.error,
     sendMessage: sendMessage.mutate,
-    isSending: sendMessage.isPending,
+    sendFileMessage: sendFileMessage.mutate,
+    isSending: sendMessage.isPending || sendFileMessage.isPending,
     subscribeToMessages,
   };
 }

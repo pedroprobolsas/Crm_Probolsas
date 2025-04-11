@@ -135,7 +135,7 @@ export interface Message {
   content: string;
   sender: 'agent' | 'client';
   sender_id: string;
-  type: 'text' | 'image' | 'file';
+  type: 'text' | 'image' | 'file' | 'audio' | 'pdf';
   status: 'sent' | 'delivered' | 'read';
   metadata?: any;
   file_url?: string;

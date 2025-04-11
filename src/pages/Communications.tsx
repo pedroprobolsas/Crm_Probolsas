@@ -55,7 +55,6 @@ interface Client {
 export function Communications() {
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [showFileUploader, setShowFileUploader] = useState(false);
   const [showTrackingPanel, setShowTrackingPanel] = useState(false);
   const [showNewChatModal, setShowNewChatModal] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -71,6 +70,7 @@ export function Communications() {
     messages, 
     isLoading: isLoadingMessages, 
     sendMessage, 
+    sendFileMessage,
     isSending,
     subscribeToMessages 
   } = useMessages(selectedConversation?.id || null);
@@ -144,15 +144,38 @@ export function Communications() {
     }
   };
 
-  const handleFileUpload = async (files: File[]) => {
-    if (!selectedConversation) return;
+  const handleSendFile = async (file: File) => {
+    if (!selectedConversation || !user) {
+      console.log('Cannot send file: missing conversation or user', {
+        hasConversation: !!selectedConversation,
+        hasUser: !!user
+      });
+      return;
+    }
     
     try {
-      // Implement file upload logic here
-      toast.success(`${files.length} archivo(s) subido(s) correctamente`);
-      setShowFileUploader(false);
+      console.log('Sending file:', file.name);
+      
+      // Enviar archivo usando sendFileMessage
+      await sendFileMessage({
+        file,
+        conversationId: selectedConversation.id,
+        sender: 'agent',
+        senderId: user.id
+      });
+      
+      // Actualizar la conversación con el último mensaje
+      await updateConversation({
+        id: selectedConversation.id,
+        last_message: `[${file.type.startsWith('image/') ? 'Imagen' : file.type === 'application/pdf' ? 'PDF' : file.type.startsWith('audio/') ? 'Audio' : 'Archivo'}] ${file.name}`,
+        last_message_at: new Date().toISOString(),
+        unread_count: 0
+      });
+      
+      toast.success('Archivo enviado correctamente');
     } catch (error) {
-      toast.error('Error al subir los archivos');
+      console.error('Error al enviar archivo:', error);
+      toast.error('Error al enviar el archivo');
     }
   };
 
@@ -336,18 +359,10 @@ export function Communications() {
               </div>
             </div>
 
-            {/* File Uploader */}
-            {showFileUploader && (
-              <FileUploader
-                onUpload={handleFileUpload}
-                onClose={() => setShowFileUploader(false)}
-              />
-            )}
-
             {/* Message Input */}
             <ChatInput
               onSend={handleSendMessage}
-              onAttach={() => setShowFileUploader(true)}
+              onSendFile={handleSendFile}
               isLoading={isSending}
             />
           </>
