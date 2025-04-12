@@ -1,0 +1,81 @@
+version: '3.8'
+
+services:
+  crm-app:
+    image: ${IMAGE_NAME:-crm-probolsas:latest}
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: always
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - VITE_SUPABASE_URL=https://egiyffxvnknfehlfnovf.supabase.co
+      - VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVnaXlmZnh2bmtuZmVobGZub3ZmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzkzODg4OTAsImV4cCI6MjA1NDk2NDg5MH0.qW2THTMrJ7k8mKnQd24g8paHcAe6SQy0SQRp_pLEfbs
+    healthcheck:
+      test: ["CMD", "node", "health-check.js"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    networks:
+      - web
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.crm-app.rule=Host(`ippcrm.probolsas.co`)"
+      - "traefik.http.routers.crm-app.entrypoints=websecure"
+      - "traefik.http.routers.crm-app.tls=true"
+      - "traefik.http.routers.crm-app.tls.certresolver=letsencrypt"
+      - "traefik.http.services.crm-app.loadbalancer.server.port=3000"
+
+  traefik:
+    image: traefik:v2.10
+    container_name: traefik
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - traefik-data:/letsencrypt
+    command:
+      - "--api.insecure=false"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.web.http.redirections.entryPoint.to=websecure"
+      - "--entrypoints.web.http.redirections.entryPoint.scheme=https"
+      - "--entrypoints.websecure.address=:443"
+      - "--certificatesresolvers.letsencrypt.acme.httpchallenge=true"
+      - "--certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web"
+      - "--certificatesresolvers.letsencrypt.acme.email=admin@probolsas.co"  # Cambia esto por tu email
+      - "--certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json"
+      - "--ping=true"
+      - "--ping.entrypoint=web"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--spider", "http://localhost:8080/ping"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    networks:
+      - web
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.traefik-dashboard.rule=Host(`traefik.probolsas.co`)"  # Cambia esto por tu dominio para el dashboard
+      - "traefik.http.routers.traefik-dashboard.service=api@internal"
+      - "traefik.http.routers.traefik-dashboard.entrypoints=websecure"
+      - "traefik.http.routers.traefik-dashboard.tls=true"
+      - "traefik.http.routers.traefik-dashboard.tls.certresolver=letsencrypt"
+      # Descomenta las siguientes líneas si deseas proteger el dashboard con autenticación básica
+      # - "traefik.http.routers.traefik-dashboard.middlewares=traefik-auth"
+      # - "traefik.http.middlewares.traefik-auth.basicauth.users=admin:$$apr1$$xyz123$$hashed_password"  # Genera esto con htpasswd
+
+networks:
+  web:
+    name: web
+    driver: bridge
+
+volumes:
+  traefik-data:
+    name: traefik-data
