@@ -2,10 +2,8 @@ version: '3.8'
 
 services:
   crm-app:
-    image: ${IMAGE_NAME:-crm-probolsas:latest}
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: pedrosandoval/crm-probolsas:latest
+
     restart: always
     environment:
       - NODE_ENV=production
