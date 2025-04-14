@@ -2,7 +2,7 @@
 FROM node:20-alpine AS build
 WORKDIR /app
 COPY package*.json ./
-RUN npm ci
+RUN npm install
 COPY . .
 RUN npm run build
 
@@ -16,16 +16,12 @@ COPY server.js ./
 COPY health-check.js ./
 RUN chmod +x health-check.js
 
-# Configuración del entorno
 ENV NODE_ENV=production
 ENV PORT=3000
 
-# Exponer puerto
 EXPOSE 3000
 
-# Configurar health check
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
   CMD node health-check.js || exit 1
 
-# Comando de inicio
 CMD ["node", "server.js"]
