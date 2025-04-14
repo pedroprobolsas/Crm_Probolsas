@@ -2,29 +2,19 @@ version: '3.8'
 
 services:
   crm-app:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    restart: always
-    environment:
-      - NODE_ENV=production
-      - PORT=3000
-      - VITE_SUPABASE_URL=https://egiyffxvnknfehlfnovf.supabase.co
-      - VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVnaXlmZnh2bmtuZmVobGZub3ZmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzkzODg4OTAsImV4cCI6MjA1NDk2NDg5MH0.qW2THTMrJ7k8mKnQd24g8paHcAe6SQy0SQRp_pLEfbs
-    healthcheck:
-      test: ["CMD", "node", "health-check.js"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 30s
-    ports:
-      - "3000:3000"
+    image: pedroconda/crm-probolsas:latest
     networks:
-      - default
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.crm-app.rule=Host(`ippcrm.probolsas.co`)"
-      - "traefik.http.routers.crm-app.entrypoints=websecure"
-      - "traefik.http.routers.crm-app.tls=true"
-      - "traefik.http.routers.crm-app.tls.certresolver=letsencrypt"
-      - "traefik.http.services.crm-app.loadbalancer.server.port=3000"
+      - probolsas
+    deploy:
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.crm.rule=Host(`ippcrm.probolsas.co`)"
+        - "traefik.http.routers.crm.entrypoints=websecure"
+        - "traefik.http.routers.crm.tls.certresolver=letsencrypt"
+        - "traefik.http.services.crm.loadbalancer.server.port=3000"
+    env_file:
+      - .env  # Esto espera que el archivo esté en el servidor o se maneje como Secret en Portainer
+
+networks:
+  probolsas:
+    external: true
