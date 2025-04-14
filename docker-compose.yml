@@ -2,8 +2,9 @@ version: '3.8'
 
 services:
   crm-app:
-    image: pedrosandoval/crm-probolsas:latest
-
+    build:
+      context: .
+      dockerfile: Dockerfile
     restart: always
     environment:
       - NODE_ENV=production
@@ -19,7 +20,7 @@ services:
     ports:
       - "3000:3000"
     networks:
-      - web
+      - default
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.crm-app.rule=Host(`ippcrm.probolsas.co`)"
@@ -27,7 +28,3 @@ services:
       - "traefik.http.routers.crm-app.tls=true"
       - "traefik.http.routers.crm-app.tls.certresolver=letsencrypt"
       - "traefik.http.services.crm-app.loadbalancer.server.port=3000"
-
-networks:
-  web:
-    external: true
