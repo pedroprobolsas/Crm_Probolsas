@@ -198,3 +198,85 @@ export interface ClientFilters {
   stage?: string;
   tags?: string[];
 }
+
+export type ClientStatus = 'active' | 'inactive' | 'at_risk';
+
+export type ClientStage = 'lead' | 'prospect' | 'negotiation' | 'customer' | 'inactive';
+
+export interface ClientInteraction {
+  id: string;
+  client_id: string;
+  agent_id: string;
+  type: 'call' | 'email' | 'visit' | 'consultation';
+  date: string;
+  notes: string;
+  next_action?: string | null;
+  next_action_date?: string | null;
+  priority: 'low' | 'medium' | 'high';
+  status: 'pending' | 'completed' | 'cancelled';
+  attachments?: Array<{
+    name: string;
+    url: string;
+    type?: string;
+    size?: number;
+  }> | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export type ClientInteractionInsert = Omit<ClientInteraction, 'id' | 'created_at' | 'updated_at'>;
+
+export interface Product {
+  id: string;
+  name: string;
+  sku: string;
+  description?: string;
+  regular_price: number;
+  price_2: number;
+  price_3: number;
+  price_4: number;
+  unit_type: string;
+  categories: string[];
+  status: 'active' | 'inactive';
+  woo_status: 'publish' | 'draft';
+  image?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export type NewProduct = Omit<Product, 'id' | 'status' | 'woo_status' | 'created_at' | 'updated_at'>;
+
+export interface Quote {
+  id: string;
+  client_id: string;
+  agent_id: string;
+  title: string;
+  status: 'draft' | 'sent' | 'approved' | 'rejected' | 'expired';
+  subtotal: number;
+  tax: number;
+  discount: number;
+  total: number;
+  notes?: string;
+  valid_until?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface QuoteItem {
+  id: string;
+  quote_id: string;
+  product_id: string;
+  product_name: string;
+  product_sku: string;
+  quantity: number;
+  unit_price: number;
+  subtotal: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface EventType {
+  id: string;
+  name: string;
+  color: string;
+}

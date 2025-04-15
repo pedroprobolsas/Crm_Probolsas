@@ -1,4 +1,3 @@
-import React from 'react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import {
@@ -7,7 +6,6 @@ import {
   Users,
   HelpCircle,
   FileText,
-  ArrowRight,
   Clock,
   Flag,
   MessageCircle,

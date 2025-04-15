@@ -25,7 +25,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   profile: null,
   isLoading: true,
   signIn: async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data: authData, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
@@ -41,6 +41,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     if (profileError) throw profileError;
 
     set({ 
+      user: authData.user,
       profile: {
         id: profile.id,
         role: profile.role,

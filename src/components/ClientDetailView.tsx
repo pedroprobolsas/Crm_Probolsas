@@ -1,26 +1,18 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { 
   Building2, 
-  Globe, 
   FileText, 
   Users, 
-  Phone, 
-  Mail, 
   Briefcase, 
   Scale, 
-  Calendar, 
   ArrowLeft,
   MessageCircle,
   Edit,
   Save,
   X,
-  Upload,
-  Plus,
   BarChart
 } from 'lucide-react';
-import DatePicker from 'react-datepicker';
 import "react-datepicker/dist/react-datepicker.css";
-import { es } from 'date-fns/locale';
 import { ClientTimeline } from './ClientTimeline';
 import { useClientDetail } from '../lib/hooks/useClientDetail';
 import { useQuotes } from '../lib/hooks/useQuotes';

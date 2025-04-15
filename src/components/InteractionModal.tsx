@@ -1,9 +1,13 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { X, Phone, Mail, Users, HelpCircle, Upload, AlertCircle, Flag } from 'lucide-react';
 import { useDropzone } from 'react-dropzone';
 import DatePicker from 'react-datepicker';
 import "react-datepicker/dist/react-datepicker.css";
-import type { InteractionType, ClientInteraction, ClientInteractionInsert, InteractionPriority } from '../types';
+import type { ClientInteraction, ClientInteractionInsert } from '../lib/types';
+
+// Define tipos locales que faltan
+type InteractionType = 'call' | 'email' | 'visit' | 'consultation';
+type InteractionPriority = 'low' | 'medium' | 'high';
 import { useAuthStore } from '../lib/store/authStore';
 import { supabase } from '../lib/supabase';
 

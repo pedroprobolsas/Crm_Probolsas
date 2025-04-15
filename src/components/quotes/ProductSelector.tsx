@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Search, Package, Plus, X } from 'lucide-react';
 import { useProducts } from '../../lib/hooks/useProducts';
 import type { Product } from '../../lib/types';

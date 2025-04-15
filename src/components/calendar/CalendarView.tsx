@@ -24,8 +24,8 @@ import {
   Share2
 } from 'lucide-react';
 
-type EventType = 'product_development' | 'technical_test' | 'delivery' | 'commercial_visit' | 'post_sale';
-type EventPriority = 'high' | 'medium' | 'low';
+export export type EventType = 'product_development' | 'technical_test' | 'delivery' | 'commercial_visit' | 'post_sale';
+export export type EventPriority = 'high' | 'medium' | 'low';
 
 interface CalendarEvent {
   id: string;

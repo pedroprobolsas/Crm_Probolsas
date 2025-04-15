@@ -1,15 +1,33 @@
-import React, { useState } from 'react';
-import { X, Package, FileText, User2, Clock, AlertTriangle } from 'lucide-react';
+import { useState } from 'react';
+import { X, Package, FileText, User2, Clock } from 'lucide-react';
 import DatePicker from 'react-datepicker';
 import "react-datepicker/dist/react-datepicker.css";
 import { es } from 'date-fns/locale';
-import type { EventType } from './CalendarView';
+import type { EventType, EventPriority } from './CalendarView';
+
+interface CalendarEvent {
+  id?: string;
+  title: string;
+  type: EventType;
+  date: Date;
+  status: 'pending' | 'in_progress' | 'completed' | 'cancelled';
+  priority: EventPriority;
+  phase: string;
+  packagingType: string;
+  references: string[];
+  internalResponsible: string;
+  clientContact: string;
+  notes: string;
+  requiredDocuments: string[];
+  followUpActions: string[];
+  attachments: any[];
+}
 
 interface CalendarEventModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (data: any) => void;
-  event?: any;
+  onSubmit: (data: CalendarEvent) => void;
+  event?: CalendarEvent;
   isSubmitting?: boolean;
 }
 

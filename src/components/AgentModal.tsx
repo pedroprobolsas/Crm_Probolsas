@@ -91,7 +91,18 @@ export function AgentModal({ isOpen, onClose, onSubmit, agent, isSubmitting }: A
     e.preventDefault();
     if (validateForm()) {
       try {
-        await onSubmit(formData);
+        // Asegurarse de que role sea del tipo correcto ('admin' | 'agent')
+        const role = formData.role === 'admin' ? 'admin' : 'agent';
+        const status = formData.status as 'online' | 'busy' | 'offline' | 'inactive';
+        
+        await onSubmit({
+          ...formData,
+          role,
+          status,
+          avatar: agent?.avatar || null,
+          activeChats: agent?.activeChats || 0,
+          satisfactionScore: agent?.satisfactionScore || 0
+        });
         setIsDirty(false);
       } catch (error) {
         console.error('Error submitting form:', error);
