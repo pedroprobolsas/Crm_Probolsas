@@ -4,8 +4,9 @@ import { format } from 'date-fns';
 import { useMessages } from '../lib/hooks/useMessages';
 import { useConversations } from '../lib/hooks/useConversations';
 import { useAuthStore } from '../lib/store/authStore';
+import { supabase } from '../lib/supabase';
 import { ChatMessage } from '../components/chat/ChatMessage';
-import { ChatInput } from '../components/chat/ChatInput';
+import { ChatInputWithIA } from '../components/chat/ChatInputWithIA';
 import { AISuggestions } from '../components/chat/AISuggestions';
 import { FileUploader } from '../components/chat/FileUploader';
 import { ClientTrackingPanel } from '../components/tracking/ClientTrackingPanel';
@@ -97,7 +98,7 @@ export function Communications() {
     }
   }, [selectedConversation, subscribeToMessages]);
 
-  const handleSendMessage = async (content: string) => {
+  const handleSendMessage = async (content: string, iaAssistantActive: boolean = false) => {
     if (!selectedConversation || !content.trim() || !user) {
       console.log('Cannot send message: missing conversation, content, or user', {
         hasConversation: !!selectedConversation,
@@ -110,14 +111,31 @@ export function Communications() {
     try {
       console.log('Creating new message object');
       
-      // Create message object
+      // Verificar si ya existe un mensaje idéntico para evitar duplicados
+      const { data: existingMessages } = await supabase
+        .from('messages')
+        .select('id, sender')
+        .eq('conversation_id', selectedConversation.id)
+        .eq('content', content.trim())
+        .or(`sender.eq.agent,sender.eq.client`)
+        .gte('created_at', new Date(Date.now() - 5000).toISOString()) // Mensajes de los últimos 5 segundos
+        .order('created_at', { ascending: false });
+      
+      if (existingMessages && existingMessages.length > 0) {
+        console.log('Mensaje duplicado detectado, no se enviará de nuevo:', existingMessages);
+        toast.info('Mensaje ya enviado');
+        return;
+      }
+      
+      // Create message object - siempre 'agent' en esta vista
       const newMessage = {
         conversation_id: selectedConversation.id,
         content: content.trim(),
         sender: 'agent' as const,
         sender_id: user.id,
         status: 'sent' as const,
-        type: 'text' as const
+        type: 'text' as const,
+        asistente_ia_activado: iaAssistantActive
       };
       
       console.log('Message object created:', newMessage);
@@ -126,6 +144,37 @@ export function Communications() {
       console.log('Sending message to Supabase');
       await sendMessage(newMessage);
       console.log('Message sent to Supabase');
+      
+      // Si el asistente IA está activado, también enviar un mensaje como cliente
+      // para que se dispare el webhook de IA (que solo se activa con sender='client')
+      if (iaAssistantActive) {
+        console.log('Asistente IA activado, enviando mensaje adicional como cliente');
+        
+        // Esperar un momento para evitar conflictos
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        // Crear mensaje como cliente con el mismo contenido
+        const clientMessage = {
+          conversation_id: selectedConversation.id,
+          content: `[IA] ${content.trim()}`, // Añadir prefijo para distinguirlo
+          sender: 'client' as const,
+          sender_id: selectedConversation.client_id, // ID del cliente
+          status: 'sent' as const,
+          type: 'text' as const,
+          asistente_ia_activado: true // Siempre true para este mensaje
+        };
+        
+        // Insertar directamente en la base de datos para evitar duplicación en la UI
+        const { error } = await supabase
+          .from('messages')
+          .insert([clientMessage]);
+          
+        if (error) {
+          console.error('Error al enviar mensaje como cliente para IA:', error);
+        } else {
+          console.log('Mensaje como cliente enviado para activar webhook IA');
+        }
+      }
       
       // Update conversation with last message
       console.log('Updating conversation');
@@ -359,12 +408,13 @@ export function Communications() {
               </div>
             </div>
 
-            {/* Message Input */}
-            <ChatInput
-              onSend={handleSendMessage}
-              onSendFile={handleSendFile}
-              isLoading={isSending}
-            />
+      {/* Message Input */}
+      <ChatInputWithIA
+        onSend={handleSendMessage}
+        onSendFile={handleSendFile}
+        isLoading={isSending}
+        conversationId={selectedConversation.id}
+      />
           </>
         ) : (
           <div className="flex-1 flex items-center justify-center text-gray-500">

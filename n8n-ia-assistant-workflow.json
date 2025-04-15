@@ -1,0 +1,407 @@
+{
+  "name": "Control Automático del Asistente IA por Conversación",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 5
+            }
+          ]
+        }
+      },
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [
+        250,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT id FROM conversations \nWHERE updated_at > NOW() - INTERVAL '7 days'\nORDER BY updated_at DESC\nLIMIT 50;"
+      },
+      "name": "Obtener Conversaciones Activas",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 1,
+      "position": [
+        450,
+        300
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "1",
+          "name": "Supabase"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Obtener la hora actual en la zona horaria de México\nconst now = new Date();\nconst mexicoTime = new Intl.DateTimeFormat('es-MX', {\n  timeZone: 'America/Mexico_City',\n  hour: 'numeric',\n  minute: 'numeric',\n  hour12: false\n}).format(now);\n\n// Obtener día de la semana (0 = domingo, 6 = sábado)\nconst dayOfWeek = now.getDay();\n\n// Extraer hora y minutos\nconst [hours, minutes] = mexicoTime.split(':').map(Number);\n\n// Determinar si estamos en horario laboral\n// Lunes a viernes (1-5) de 8:00 a 18:00\nconst isBusinessDay = dayOfWeek >= 1 && dayOfWeek <= 5;\nconst isBusinessHours = hours >= 8 && hours < 18;\nconst isBusinessTime = isBusinessDay && isBusinessHours;\n\n// Verificar si hay alguna alerta de mantenimiento activa\n// Esto podría venir de otra fuente de datos en un flujo real\nconst maintenanceMode = false;\n\n// Determinar si el Asistente IA debe estar activado\nconst shouldBeEnabled = isBusinessTime && !maintenanceMode;\n\n// Añadir razón para el cambio de estado\nlet reason = '';\nif (!isBusinessDay) {\n  reason = 'Fuera de días laborales (fin de semana)';\n} else if (!isBusinessHours) {\n  reason = `Fuera de horario laboral (${hours}:${minutes.toString().padStart(2, '0')})`;\n} else if (maintenanceMode) {\n  reason = 'Modo de mantenimiento activo';\n} else {\n  reason = 'Dentro de horario laboral';\n}\n\n// Obtener las conversaciones del nodo anterior\nconst conversations = $input.all();\nconst items = [];\n\n// Preparar los datos para cada conversación\nconversations.forEach(conv => {\n  items.push({\n    conversation_id: conv.json.id,\n    shouldBeEnabled,\n    reason\n  });\n});\n\nreturn items;"
+      },
+      "name": "Determinar Estado",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        650,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      },
+      "name": "Split In Batches",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 2,
+      "position": [
+        850,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT * FROM get_conversation_ia_state('{{$node[\"Split In Batches\"].json[\"conversation_id\"]}}');"
+      },
+      "name": "Verificar Estado Actual",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 1,
+      "position": [
+        1050,
+        300
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "1",
+          "name": "Supabase"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{$node[\"Verificar Estado Actual\"].json[\"state\"]}}",
+              "value2": "={{$node[\"Split In Batches\"].json[\"shouldBeEnabled\"]}}"
+            }
+          ]
+        }
+      },
+      "name": "¿Cambio Necesario?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        1250,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{$node[\"Split In Batches\"].json[\"shouldBeEnabled\"]}}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "name": "Activar o Desactivar",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        1450,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT * FROM update_conversation_ia_state(\n  '{{$node[\"Split In Batches\"].json[\"conversation_id\"]}}',\n  true,\n  '{{$node[\"Split In Batches\"].json[\"reason\"]}}'\n);"
+      },
+      "name": "Activar Asistente IA",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 1,
+      "position": [
+        1650,
+        300
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "1",
+          "name": "Supabase"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT * FROM update_conversation_ia_state(\n  '{{$node[\"Split In Batches\"].json[\"conversation_id\"]}}',\n  false,\n  '{{$node[\"Split In Batches\"].json[\"reason\"]}}'\n);"
+      },
+      "name": "Desactivar Asistente IA",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 1,
+      "position": [
+        1650,
+        500
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "1",
+          "name": "Supabase"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// No se requiere cambio de estado\nreturn {\n  message: \"No se requiere cambio de estado\",\n  conversation_id: $node[\"Split In Batches\"].json.conversation_id,\n  currentState: $node[\"Verificar Estado Actual\"].json.state,\n  desiredState: $node[\"Split In Batches\"].json.shouldBeEnabled\n};"
+      },
+      "name": "Sin Cambios",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        1450,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://hooks.slack.com/services/TXXXXXXXX/BXXXXXXXX/XXXXXXXXXXXXXXXXXXXXXXXX",
+        "authentication": "none",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "text",
+              "value": "=El estado del Asistente IA para la conversación {{$node[\"Split In Batches\"].json[\"conversation_id\"]}} ha cambiado a: {{$node[\"Split In Batches\"].json[\"shouldBeEnabled\"] ? \"ACTIVADO\" : \"DESACTIVADO\"}}. Razón: {{$node[\"Split In Batches\"].json[\"reason\"]}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Notificar Cambio",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [
+        1850,
+        400
+      ]
+    },
+    {
+      "parameters": {},
+      "name": "Merge",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 2,
+      "position": [
+        2050,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "passThrough",
+        "value": "={{$node[\"Split In Batches\"].context[\"noItemsLeft\"] === false}}"
+      },
+      "name": "¿Más Conversaciones?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        2250,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Obtener Conversaciones Activas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Obtener Conversaciones Activas": {
+      "main": [
+        [
+          {
+            "node": "Determinar Estado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Determinar Estado": {
+      "main": [
+        [
+          {
+            "node": "Split In Batches",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split In Batches": {
+      "main": [
+        [
+          {
+            "node": "Verificar Estado Actual",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verificar Estado Actual": {
+      "main": [
+        [
+          {
+            "node": "¿Cambio Necesario?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿Cambio Necesario?": {
+      "main": [
+        [
+          {
+            "node": "Sin Cambios",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Activar o Desactivar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Activar o Desactivar": {
+      "main": [
+        [
+          {
+            "node": "Activar Asistente IA",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Desactivar Asistente IA",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Activar Asistente IA": {
+      "main": [
+        [
+          {
+            "node": "Notificar Cambio",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Desactivar Asistente IA": {
+      "main": [
+        [
+          {
+            "node": "Notificar Cambio",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sin Cambios": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notificar Cambio": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "¿Más Conversaciones?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿Más Conversaciones?": {
+      "main": [
+        [
+          {
+            "node": "Split In Batches",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {},
+  "versionId": "1",
+  "id": "1",
+  "meta": {
+    "instanceId": "1"
+  },
+  "tags": [
+    {
+      "name": "Asistente IA",
+      "color": "#00FF00"
+    },
+    {
+      "name": "Automatización",
+      "color": "#0000FF"
+    }
+  ]
+}

@@ -99,9 +99,25 @@ export function useMessages(conversationId: string | null) {
         .order('created_at', { ascending: true });
 
       if (error) throw error;
-      return data as Message[];
+      
+      // Filtrar mensajes duplicados y mensajes especiales para IA
+      const filteredMessages = (data || []).filter(message => {
+        // Excluir mensajes con prefijo [IA] que son solo para el webhook
+        if (message.content.startsWith('[IA]') && message.sender === 'client') {
+          return false;
+        }
+        
+        return true;
+      });
+      
+      return filteredMessages as Message[];
     },
     enabled: !!conversationId,
+    // Configuración para actualizaciones en tiempo real
+    refetchInterval: 2000, // Refrescar cada 2 segundos
+    refetchOnWindowFocus: true, // Refrescar cuando la ventana obtiene el foco
+    refetchOnMount: true, // Refrescar cuando el componente se monta
+    refetchOnReconnect: true, // Refrescar cuando se reconecta la red
   });
 
   const sendMessage = useMutation({
@@ -120,7 +136,8 @@ export function useMessages(conversationId: string | null) {
               sender: message.sender,
               sender_id: message.sender_id,
               type: message.type || 'text',
-              status: message.status || 'sent'
+              status: message.status || 'sent',
+              asistente_ia_activado: message.asistente_ia_activado || false
             }
           ])
           .select();
@@ -143,7 +160,8 @@ export function useMessages(conversationId: string | null) {
             sender_id: data[0].sender_id,
             type: data[0].type,
             status: data[0].status,
-            created_at: data[0].created_at
+            created_at: data[0].created_at,
+            asistente_ia_activado: data[0].asistente_ia_activado
           }).catch(err => {
             console.error('Error in backup webhook send:', err);
           });
@@ -172,6 +190,9 @@ export function useMessages(conversationId: string | null) {
     try {
       console.log(`Subscribing to messages for conversation: ${conversationId}`);
       
+      // Mantener un registro de los IDs de mensajes ya procesados para evitar duplicados
+      const processedMessageIds = new Set<string>();
+      
       const subscription = supabase
         .channel(`messages:${conversationId}`)
         .on(
@@ -184,6 +205,18 @@ export function useMessages(conversationId: string | null) {
           },
           (payload) => {
             console.log('New message received:', payload);
+            
+            // Verificar si ya hemos procesado este mensaje
+            const messageId = payload.new.id;
+            if (processedMessageIds.has(messageId)) {
+              console.log(`Mensaje duplicado detectado, ignorando: ${messageId}`);
+              return;
+            }
+            
+            // Registrar este mensaje como procesado
+            processedMessageIds.add(messageId);
+            
+            // Actualizar la consulta para obtener los mensajes actualizados
             queryClient.invalidateQueries({ queryKey: ['messages', conversationId] });
           }
         )

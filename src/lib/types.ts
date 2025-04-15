@@ -137,6 +137,7 @@ export interface Message {
   sender_id: string;
   type: 'text' | 'image' | 'file' | 'audio' | 'pdf';
   status: 'sent' | 'delivered' | 'read';
+  asistente_ia_activado?: boolean;
   metadata?: any;
   file_url?: string;
   file_name?: string;
