@@ -3,6 +3,13 @@ import { supabase } from '../supabase';
 import type { Message } from '../types';
 import { uploadFileToSupabase, getMessageTypeFromFile } from '../utils/fileUpload';
 
+// Extender la interfaz Window para incluir nuestra propiedad personalizada
+declare global {
+  interface Window {
+    _processedMessageIds?: Set<string>;
+  }
+}
+
 /**
  * Sends a message to the webhook directly
  * This is a backup method in case the database trigger fails
@@ -183,18 +190,23 @@ export function useMessages(conversationId: string | null) {
     },
   });
 
-  // Subscribe to new messages
+  // Subscribe to new messages - Versión mejorada para evitar duplicados
   const subscribeToMessages = () => {
     if (!conversationId) return;
 
     try {
       console.log(`Subscribing to messages for conversation: ${conversationId}`);
       
-      // Mantener un registro de los IDs de mensajes ya procesados para evitar duplicados
-      const processedMessageIds = new Set<string>();
+      // Mantener un registro global de los IDs de mensajes ya procesados para evitar duplicados
+      // Esta variable es estática y se comparte entre todas las instancias del hook
+      if (typeof window !== 'undefined') {
+        if (!window._processedMessageIds) {
+          window._processedMessageIds = new Set<string>();
+        }
+      }
       
       const subscription = supabase
-        .channel(`messages:${conversationId}`)
+        .channel(`messages:${conversationId}:${Date.now()}`) // Añadir timestamp para evitar conflictos
         .on(
           'postgres_changes',
           {
@@ -208,13 +220,24 @@ export function useMessages(conversationId: string | null) {
             
             // Verificar si ya hemos procesado este mensaje
             const messageId = payload.new.id;
-            if (processedMessageIds.has(messageId)) {
+            if (typeof window !== 'undefined' && window._processedMessageIds && window._processedMessageIds.has(messageId)) {
               console.log(`Mensaje duplicado detectado, ignorando: ${messageId}`);
               return;
             }
             
+            // Verificar si es un mensaje especial para IA
+            if (payload.new.content && payload.new.content.startsWith('[IA]') && payload.new.sender === 'client') {
+              console.log(`Mensaje IA especial detectado, ignorando en UI: ${messageId}`);
+              if (typeof window !== 'undefined' && window._processedMessageIds) {
+                window._processedMessageIds.add(messageId);
+              }
+              return;
+            }
+            
             // Registrar este mensaje como procesado
-            processedMessageIds.add(messageId);
+            if (typeof window !== 'undefined' && window._processedMessageIds) {
+              window._processedMessageIds.add(messageId);
+            }
             
             // Actualizar la consulta para obtener los mensajes actualizados
             queryClient.invalidateQueries({ queryKey: ['messages', conversationId] });

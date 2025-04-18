@@ -145,36 +145,9 @@ export function Communications() {
       await sendMessage(newMessage);
       console.log('Message sent to Supabase');
       
-      // Si el asistente IA está activado, también enviar un mensaje como cliente
-      // para que se dispare el webhook de IA (que solo se activa con sender='client')
-      if (iaAssistantActive) {
-        console.log('Asistente IA activado, enviando mensaje adicional como cliente');
-        
-        // Esperar un momento para evitar conflictos
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-        // Crear mensaje como cliente con el mismo contenido
-        const clientMessage = {
-          conversation_id: selectedConversation.id,
-          content: `[IA] ${content.trim()}`, // Añadir prefijo para distinguirlo
-          sender: 'client' as const,
-          sender_id: selectedConversation.client_id, // ID del cliente
-          status: 'sent' as const,
-          type: 'text' as const,
-          asistente_ia_activado: true // Siempre true para este mensaje
-        };
-        
-        // Insertar directamente en la base de datos para evitar duplicación en la UI
-        const { error } = await supabase
-          .from('messages')
-          .insert([clientMessage]);
-          
-        if (error) {
-          console.error('Error al enviar mensaje como cliente para IA:', error);
-        } else {
-          console.log('Mensaje como cliente enviado para activar webhook IA');
-        }
-      }
+      // Ya no necesitamos enviar un mensaje adicional como cliente
+      // porque el trigger SQL ahora maneja correctamente los mensajes con asistente_ia_activado=true
+      // Esto evita la duplicación de mensajes y clientes
       
       // Update conversation with last message
       console.log('Updating conversation');

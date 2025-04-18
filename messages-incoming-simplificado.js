@@ -1,10 +1,14 @@
-import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { createClient } from "npm:@supabase/supabase-js@2";
+// Versión simplificada de messages-incoming/index.js
+// Copiar y pegar este código en la consola de Supabase
 
-// URL del webhook de IA (respaldo en caso de que no se pueda obtener de app_settings)
+// @ts-ignore
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+// URL del webhook de IA (respaldo)
 const IA_WEBHOOK_URL_FALLBACK = 'https://ippwebhookn8n.probolsas.co/webhook/d2d918c0-7132-43fe-9e8c-e07b033f2e6b';
 
-Deno.serve(async (req)=>{
+serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', {
       headers: {
@@ -28,10 +32,9 @@ Deno.serve(async (req)=>{
     if (body.type === 'INSERT' && body.record) {
       const message = body.record;
       
-      // Verificar si es un mensaje de cliente con asistente_ia_activado
-      // MODIFICACIÓN: Verificar también si ya fue enviado al webhook de IA por el trigger SQL
+      // MODIFICACIÓN IMPORTANTE: Verificar si ya fue enviado al webhook de IA
       if (message.sender === 'client' && message.asistente_ia_activado === true && message.ia_webhook_sent !== true) {
-        console.log('Procesando mensaje de cliente con asistente_ia_activado=true que no ha sido enviado al webhook:', message.id);
+        console.log('Procesando mensaje con asistente_ia_activado=true que no ha sido enviado al webhook:', message.id);
         
         try {
           // Obtener la URL del webhook de IA

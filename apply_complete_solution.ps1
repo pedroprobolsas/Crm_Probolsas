@@ -1,12 +1,13 @@
-# Script para crear la tabla message_whatsapp_status y la función check_if_table_exists
-# Este script ejecuta los archivos SQL create_message_whatsapp_status_table.sql y create_check_if_table_exists_function.sql
+# Script para aplicar la solución completa al problema del webhook de IA
+# Este script ejecuta todos los scripts SQL y aplica la solución completa
 
 # Configuración
 $supabaseUrl = $env:SUPABASE_URL
 $supabaseKey = $env:SUPABASE_SERVICE_ROLE_KEY
 $sqlFiles = @(
     "create_check_if_table_exists_function.sql",
-    "create_message_whatsapp_status_table.sql"
+    "create_message_whatsapp_status_table.sql",
+    "fix_webhook_ia_completo.sql"
 )
 
 # Verificar si las variables de entorno están configuradas
@@ -41,10 +42,24 @@ foreach ($sqlFile in $sqlFiles) {
     }
 }
 
+# Verificar si los archivos de Edge Functions existen
+$edgeFunctionFiles = @(
+    "supabase/functions/messages-outgoing/index.js",
+    "supabase/functions/messages-incoming/index.js"
+)
+
+foreach ($edgeFunctionFile in $edgeFunctionFiles) {
+    if (-not (Test-Path $edgeFunctionFile)) {
+        Write-Host "El archivo $edgeFunctionFile no existe. Asegúrate de que los archivos de Edge Functions estén en la ubicación correcta." -ForegroundColor Red
+        exit 1
+    }
+}
+
 # Mostrar información
-Write-Host "Creando la tabla message_whatsapp_status y la función check_if_table_exists..." -ForegroundColor Cyan
+Write-Host "Aplicando la solución completa al problema del webhook de IA..." -ForegroundColor Cyan
 Write-Host "URL de Supabase: $supabaseUrl" -ForegroundColor Cyan
 Write-Host "Archivos SQL: $($sqlFiles -join ', ')" -ForegroundColor Cyan
+Write-Host "Archivos de Edge Functions: $($edgeFunctionFiles -join ', ')" -ForegroundColor Cyan
 Write-Host ""
 
 # Ejecutar los SQL usando psql si está disponible
@@ -97,7 +112,7 @@ if ($psqlAvailable) {
             $response = Invoke-RestMethod -Uri "$supabaseUrl/rest/sql" -Method Post -Headers $headers -Body $body
             Write-Host "$sqlFile ejecutado correctamente." -ForegroundColor Green
         } catch {
-            Write-Host "Error al ejecutar ${sqlFile}:" -ForegroundColor Red
+            Write-Host "Error al ejecutar $sqlFile:" -ForegroundColor Red
             Write-Host $_.Exception.Message -ForegroundColor Red
             exit 1
         }
@@ -105,9 +120,16 @@ if ($psqlAvailable) {
 }
 
 Write-Host ""
-Write-Host "Tabla message_whatsapp_status y función check_if_table_exists creadas correctamente." -ForegroundColor Green
+Write-Host "Solución aplicada correctamente." -ForegroundColor Green
 Write-Host ""
-Write-Host "Pasos siguientes:" -ForegroundColor Cyan
-Write-Host "1. Ejecuta el script fix_webhook_ia_completo.sql para corregir el webhook de IA" -ForegroundColor Cyan
-Write-Host "2. Verifica los logs de Supabase para confirmar que el webhook de IA está funcionando correctamente" -ForegroundColor Cyan
-Write-Host "3. Envía un mensaje desde la interfaz de usuario con el asistente de IA activado para verificar que funciona correctamente" -ForegroundColor Cyan
+Write-Host "IMPORTANTE: Asegúrate de que los archivos de Edge Functions estén correctamente desplegados en Supabase." -ForegroundColor Yellow
+Write-Host ""
+Write-Host "Pasos para verificar:" -ForegroundColor Cyan
+Write-Host "1. Accede a la consola de Supabase" -ForegroundColor Cyan
+Write-Host "2. Ve a la sección de Logs" -ForegroundColor Cyan
+Write-Host "3. Busca mensajes relacionados con 'IA webhook', como:" -ForegroundColor Cyan
+Write-Host "   - 'Selected IA webhook URL: X (is_production=true/false)'" -ForegroundColor Cyan
+Write-Host "   - 'IA webhook payload: {...}'" -ForegroundColor Cyan
+Write-Host "   - 'IA webhook request succeeded for message ID: X'" -ForegroundColor Cyan
+Write-Host ""
+Write-Host "También puedes enviar un mensaje desde la interfaz de usuario con el asistente de IA activado para verificar que funciona correctamente." -ForegroundColor Cyan

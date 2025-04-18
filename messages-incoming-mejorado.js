@@ -1,10 +1,14 @@
-import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { createClient } from "npm:@supabase/supabase-js@2";
+// Versión mejorada de messages-incoming/index.js
+// Copiar y pegar este código en la consola de Supabase
 
-// URL del webhook de IA (respaldo en caso de que no se pueda obtener de app_settings)
+// @ts-ignore
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+// URL del webhook de IA (respaldo)
 const IA_WEBHOOK_URL_FALLBACK = 'https://ippwebhookn8n.probolsas.co/webhook/d2d918c0-7132-43fe-9e8c-e07b033f2e6b';
 
-Deno.serve(async (req)=>{
+serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', {
       headers: {
@@ -16,7 +20,7 @@ Deno.serve(async (req)=>{
   
   try {
     const body = await req.json();
-    console.log('Mensaje recibido en messages-incoming:', body);
+    console.log('Mensaje recibido en messages-incoming:', JSON.stringify(body));
     
     // Crear cliente de Supabase
     const supabaseClient = createClient(
@@ -24,14 +28,22 @@ Deno.serve(async (req)=>{
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
     
-    // Si es un evento de inserción de mensaje
-    if (body.type === 'INSERT' && body.record) {
+    // Si es un evento de inserción o actualización de mensaje
+    if ((body.type === 'INSERT' || body.type === 'UPDATE') && body.record) {
       const message = body.record;
       
-      // Verificar si es un mensaje de cliente con asistente_ia_activado
-      // MODIFICACIÓN: Verificar también si ya fue enviado al webhook de IA por el trigger SQL
-      if (message.sender === 'client' && message.asistente_ia_activado === true && message.ia_webhook_sent !== true) {
-        console.log('Procesando mensaje de cliente con asistente_ia_activado=true que no ha sido enviado al webhook:', message.id);
+      // Logging mejorado para depuración
+      console.log(`EDGE FUNCTION - ID: ${message.id}, Sender: ${message.sender}, Status: ${message.status}, IA Activado: ${message.asistente_ia_activado}, IA Sent: ${message.ia_webhook_sent}`);
+      
+      // MODIFICACIÓN IMPORTANTE: Verificaciones más estrictas
+      if (
+        message.sender === 'client' && 
+        message.status === 'sent' && 
+        message.asistente_ia_activado === true && 
+        message.ia_webhook_sent !== true &&
+        !message.content?.startsWith('[IA]')
+      ) {
+        console.log('Procesando mensaje con asistente_ia_activado=true que no ha sido enviado al webhook:', message.id);
         
         try {
           // Obtener la URL del webhook de IA
@@ -81,10 +93,11 @@ Deno.serve(async (req)=>{
             created_at: message.created_at,
             asistente_ia_activado: message.asistente_ia_activado,
             phone: client.phone,
-            client: client
+            client: client,
+            source: 'edge_function' // Añadir fuente para depuración
           };
           
-          console.log('Enviando mensaje al webhook de IA:', iaPayload);
+          console.log('Enviando mensaje al webhook de IA:', JSON.stringify(iaPayload));
           
           // Enviar al webhook de IA
           const iaResponse = await fetch(iaWebhookUrl, {
@@ -108,12 +121,31 @@ Deno.serve(async (req)=>{
             
             if (updateError) {
               console.error('Error al actualizar el estado del mensaje:', updateError.message);
+            } else {
+              console.log('Mensaje marcado como enviado al webhook de IA:', message.id);
             }
           }
         } catch (iaError) {
           console.error('Error al procesar mensaje para IA:', iaError);
         }
+      } else {
+        // Logging detallado para entender por qué se ignora el mensaje
+        if (message.sender !== 'client') {
+          console.log(`Mensaje ignorado: No es de cliente (sender=${message.sender})`);
+        } else if (message.status !== 'sent') {
+          console.log(`Mensaje ignorado: Status no es 'sent' (status=${message.status})`);
+        } else if (message.asistente_ia_activado !== true) {
+          console.log(`Mensaje ignorado: asistente_ia_activado no es true (${message.asistente_ia_activado})`);
+        } else if (message.ia_webhook_sent === true) {
+          console.log(`Mensaje ignorado: Ya fue enviado al webhook (ia_webhook_sent=${message.ia_webhook_sent})`);
+        } else if (message.content?.startsWith('[IA]')) {
+          console.log(`Mensaje ignorado: Comienza con [IA]`);
+        } else {
+          console.log(`Mensaje ignorado por razones desconocidas:`, JSON.stringify(message));
+        }
       }
+    } else {
+      console.log(`Evento ignorado: No es INSERT ni UPDATE o no tiene record (type=${body.type})`);
     }
     
     // Respuesta de éxito

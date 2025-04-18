@@ -1,10 +1,15 @@
-import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { createClient } from "npm:@supabase/supabase-js@2";
+// Versión simplificada de messages-outgoing/index.js
+// Copiar y pegar este código en la consola de Supabase
+
+// @ts-ignore
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
 const N8N_WEBHOOK_URL = 'https://petersandoval.app.n8n.cloud/webhook-test/6c94ca6d-5783-41f0-8839-8b574b17e01f';
 const EVOLUTION_API_URL = 'https://ippevolutionapi.probolsas.co/manager/instance/7924d748-affb-4e2c-9099-9d0db457b2c0';
 const EVOLUTION_API_KEY = '3958C61218A8-4B54-BA6D-F96FDAF30CC8';
 
-Deno.serve(async (req)=>{
+serve(async (req) => {
   try {
     const { record, type } = await req.json();
     
@@ -23,7 +28,7 @@ Deno.serve(async (req)=>{
       });
     }
     
-    // Verificación adicional para asegurarse de que no interfiera con el webhook de IA
+    // MODIFICACIÓN IMPORTANTE: Verificación adicional para asegurarse de que no interfiera con el webhook de IA
     if (record.asistente_ia_activado === true) {
       console.log('Mensaje con asistente_ia_activado=true, dejando que el trigger SQL lo maneje:', record.id);
       return new Response(JSON.stringify({
@@ -40,24 +45,42 @@ Deno.serve(async (req)=>{
     console.log('Procesando mensaje de agente:', record.id);
     
     // Obtener datos de la conversación para tener el número de WhatsApp del cliente
-    const supabaseClient = createClient(Deno.env.get('SUPABASE_URL') ?? '', Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '');
+    const supabaseClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '', 
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    );
     
-    const { data: conversation, error: convError } = await supabaseClient.from('conversations').select('client_id, whatsapp_chat_id').eq('id', record.conversation_id).single();
+    const { data: conversation, error: convError } = await supabaseClient
+      .from('conversations')
+      .select('client_id, whatsapp_chat_id')
+      .eq('id', record.conversation_id)
+      .single();
+      
     if (convError) {
       throw new Error(`Error al obtener la conversación: ${convError.message}`);
     }
     
     // Obtener datos del cliente para tener su número de teléfono
-    const { data: client, error: clientError } = await supabaseClient.from('clients').select('phone, name').eq('id', conversation.client_id).single();
+    const { data: client, error: clientError } = await supabaseClient
+      .from('clients')
+      .select('phone, name')
+      .eq('id', conversation.client_id)
+      .single();
+      
     if (clientError) {
       throw new Error(`Error al obtener el cliente: ${clientError.message}`);
     }
     
     // Obtener datos del agente para incluir su nombre
-    const { data: agent, error: agentError } = await supabaseClient.from('agents').select('name').eq('id', record.sender_id).single();
+    const { data: agent, error: agentError } = await supabaseClient
+      .from('agents')
+      .select('name')
+      .eq('id', record.sender_id)
+      .single();
+      
     if (agentError) {
       console.error(`Error al obtener el agente: ${agentError.message}`);
-    // Continuamos aunque falle, no es crítico
+      // Continuamos aunque falle, no es crítico
     }
     
     // Preparar datos para enviar a n8n
@@ -111,20 +134,25 @@ Deno.serve(async (req)=>{
       if (tableCheckError || !tableExists) {
         console.log('La tabla message_whatsapp_status no existe, usando método anterior');
         
-        const { error: updateError } = await supabaseClient.from('messages').update({
-          sent_to_whatsapp: true
-        }).eq('id', record.id);
+        const { error: updateError } = await supabaseClient
+          .from('messages')
+          .update({
+            sent_to_whatsapp: true
+          })
+          .eq('id', record.id);
         
         if (updateError) {
           console.error(`Error al actualizar el mensaje: ${updateError.message}`);
         }
       } else {
         // Si la tabla existe, insertamos un registro en ella
-        const { error: insertError } = await supabaseClient.from('message_whatsapp_status').insert({
-          message_id: record.id,
-          sent_to_whatsapp: true,
-          sent_at: new Date().toISOString()
-        });
+        const { error: insertError } = await supabaseClient
+          .from('message_whatsapp_status')
+          .insert({
+            message_id: record.id,
+            sent_to_whatsapp: true,
+            sent_at: new Date().toISOString()
+          });
         
         if (insertError) {
           console.error(`Error al registrar el estado del mensaje: ${insertError.message}`);

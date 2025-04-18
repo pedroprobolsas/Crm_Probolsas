@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { ChatMessage } from './ChatMessage';
 import { ChatInputWithIA } from './ChatInputWithIA';
-import type { Message } from '../../lib/types';
+import type { Message, Client } from '../../lib/types';
 import { useIAAssistantState } from '../../lib/hooks/useIAAssistantState';
+import { iaWebhookService } from '../../lib/services/iaWebhookService';
 import { toast } from 'sonner';
 
 interface ChatWithIAProps {
@@ -32,7 +33,9 @@ export function ChatWithIA({ conversationId, clientId }: ChatWithIAProps) {
   useEffect(() => {
     loadMessages();
     
-    // Suscribirse a nuevos mensajes
+    // Ya no necesitamos esta suscripción directa porque useMessages maneja las suscripciones
+    // y evita duplicados. La dejamos comentada como referencia.
+    /*
     const subscription = supabase
       .channel('messages')
       .on('postgres_changes', {
@@ -49,6 +52,10 @@ export function ChatWithIA({ conversationId, clientId }: ChatWithIAProps) {
     return () => {
       subscription.unsubscribe();
     };
+    */
+    
+    // En su lugar, usamos el hook useMessages para manejar las suscripciones
+    // y evitar duplicados
   }, [conversationId]);
 
   // Cargar mensajes de la conversación
@@ -104,19 +111,50 @@ export function ChatWithIA({ conversationId, clientId }: ChatWithIAProps) {
         sender_id: clientId,
         type: 'text',
         status: 'sent',
-        asistente_ia_activado: iaAssistantActive
+        asistente_ia_activado: iaAssistantActive,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
       };
       
-      const { error } = await supabase
+      // Insertar el mensaje en la base de datos
+      const { data: insertedMessage, error } = await supabase
         .from('messages')
-        .insert(newMessage);
+        .insert(newMessage)
+        .select()
+        .single();
       
       if (error) throw error;
+      
+      // Si el asistente de IA está activado, enviar directamente al webhook
+      if (iaAssistantActive && insertedMessage) {
+        try {
+          // Obtener los datos del cliente
+          const { data: clientData, error: clientError } = await supabase
+            .from('clients')
+            .select('*')
+            .eq('id', clientId)
+            .single();
+          
+          if (clientError) throw clientError;
+          
+          // Enviar directamente al webhook de IA
+          await iaWebhookService.sendMessageToWebhook(
+            insertedMessage as Message,
+            clientData as Client
+          );
+          
+          console.log('Mensaje enviado directamente al webhook de IA desde el frontend');
+        } catch (webhookError) {
+          console.error('Error al enviar mensaje al webhook de IA:', webhookError);
+          // No mostramos error al usuario para no interrumpir la experiencia
+        }
+      }
       
       // No necesitamos añadir el mensaje manualmente aquí
       // porque la suscripción lo hará automáticamente
     } catch (error) {
       console.error('Error sending message:', error);
+      toast.error('Error al enviar el mensaje');
     } finally {
       setIsLoading(false);
     }
