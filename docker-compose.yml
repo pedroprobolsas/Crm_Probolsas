@@ -2,6 +2,9 @@ version: '3.8'
 
 services:
   crm-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
     image: pedroconda/crm-probolsas:latest
     networks:
       - probolsas
@@ -13,7 +16,7 @@ services:
         - "traefik.http.routers.crm.tls.certresolver=letsencrypt"
         - "traefik.http.services.crm.loadbalancer.server.port=3000"
     env_file:
-      - .env  # Esto espera que el archivo esté en el servidor o se maneje como Secret en Portainer
+      - .env.production  # Usamos el archivo .env.production que ya existe
 
 networks:
   probolsas:

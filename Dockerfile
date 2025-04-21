@@ -17,6 +17,7 @@ WORKDIR /app
 
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/package*.json ./
+COPY health-check.js ./
 
 RUN npm install --only=production
 
@@ -24,5 +25,8 @@ ENV PORT=3000
 
 EXPOSE 3000
 
-CMD ["npm", "start"]
+# Configurar health check
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
+  CMD node health-check.js || exit 1
 
+CMD ["npm", "start"]
