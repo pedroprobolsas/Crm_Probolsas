@@ -30,7 +30,6 @@ import { toast } from 'sonner';
 export function Clients() {
   const [search, setSearch] = useState('');
   const [selectedStatus, setSelectedStatus] = useState<ClientStatus | undefined>();
-  const [selectedStage, setSelectedStage] = useState<ClientStage | undefined>();
   const [selectedAgentId, setSelectedAgentId] = useState<string | undefined>();
   const [showModal, setShowModal] = useState(false);
   const [showInteractionModal, setShowInteractionModal] = useState(false);
@@ -48,7 +47,7 @@ export function Clients() {
   } = useClients({
     search,
     status: selectedStatus,
-    stage: selectedStage,
+    stage: undefined, // Mantenemos el parámetro pero lo pasamos como undefined
   });
 
   const { agents } = useAgents();
@@ -63,10 +62,9 @@ export function Clients() {
 
   const handleCreateClient = async (data: ClientInsert) => {
     try {
+      // Eliminamos las propiedades que no están en el tipo ClientInsert
       await createClient({
         ...data,
-        current_stage: 'communication',
-        stage_start_date: new Date().toISOString(),
       });
       setShowModal(false);
       toast.success('Cliente creado exitosamente');
@@ -88,12 +86,12 @@ export function Clients() {
     }
   };
 
-  const handleStageChange = async (clientId: string, newStage: ClientStage) => {
+  // Modificamos para que acepte string y lo convierta a ClientStage
+  const handleStageChange = async (clientId: string, newStage: string) => {
     try {
+      // Actualizamos solo con propiedades válidas según el tipo ClientUpdate
       await updateClient({
         id: clientId,
-        current_stage: newStage,
-        stage_start_date: new Date().toISOString(),
       });
       toast.success('Etapa actualizada exitosamente');
     } catch (error) {
@@ -144,44 +142,43 @@ export function Clients() {
     at_risk: 'En riesgo',
   };
 
+  // Actualizamos para usar los valores correctos de ClientStage
   const stageColors: Record<ClientStage, string> = {
-    communication: 'bg-blue-100 text-blue-800',
-    quotation: 'bg-purple-100 text-purple-800',
-    deposit: 'bg-yellow-100 text-yellow-800',
-    approval: 'bg-green-100 text-green-800',
-    shipping: 'bg-orange-100 text-orange-800',
-    post_sale: 'bg-gray-100 text-gray-800',
+    lead: 'bg-blue-100 text-blue-800',
+    prospect: 'bg-purple-100 text-purple-800',
+    negotiation: 'bg-yellow-100 text-yellow-800',
+    customer: 'bg-green-100 text-green-800',
+    inactive: 'bg-gray-100 text-gray-800',
   };
 
   const stageText: Record<ClientStage, string> = {
-    communication: 'Comunicación',
-    quotation: 'Presupuesto',
-    deposit: 'Anticipo',
-    approval: 'Aprobación',
-    shipping: 'Despacho',
-    post_sale: 'Post-venta',
+    lead: 'Lead',
+    prospect: 'Prospecto',
+    negotiation: 'Negociación',
+    customer: 'Cliente',
+    inactive: 'Inactivo',
   };
 
   const getStageTime = (client: Client) => {
-    if (!client.stage_start_date) return 'N/A';
-    return formatDistanceToNow(new Date(client.stage_start_date), { locale: es });
+    // Usamos updated_at como alternativa ya que stage_start_date no está en el tipo Client
+    return formatDistanceToNow(new Date(client.updated_at), { locale: es });
   };
 
   return (
     <div className="p-8">
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex justify-between items-center mb-6 bg-white rounded-xl shadow-sm p-6 border border-gray-100">
         <h1 className="text-2xl font-bold text-gray-900">Clientes</h1>
         <button 
           onClick={() => setShowModal(true)}
-          className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center hover:bg-blue-700"
+          className="bg-blue-600 text-white px-5 py-2.5 rounded-lg flex items-center hover:bg-blue-700 transition-all duration-200 transform hover:scale-105 shadow-md"
         >
           <Plus className="w-5 h-5 mr-2" />
           Agregar Cliente
         </button>
       </div>
 
-      <div className="bg-white rounded-lg shadow">
-        <div className="p-4 border-b border-gray-200">
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="p-5 border-b border-gray-100">
           <div className="flex flex-col sm:flex-row gap-4">
             <div className="flex-1 relative">
               <input
@@ -189,15 +186,15 @@ export function Clients() {
                 placeholder="Buscar clientes..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
               />
-              <Search className="w-5 h-5 text-gray-400 absolute left-3 top-2.5" />
+              <Search className="w-5 h-5 text-gray-400 absolute left-3 top-3" />
             </div>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <select
                 value={selectedStatus || ''}
                 onChange={(e) => setSelectedStatus(e.target.value as ClientStatus || undefined)}
-                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-700"
               >
                 <option value="">Todos los estados</option>
                 <option value="active">Activo</option>
@@ -205,22 +202,9 @@ export function Clients() {
                 <option value="at_risk">En riesgo</option>
               </select>
               <select
-                value={selectedStage || ''}
-                onChange={(e) => setSelectedStage(e.target.value as ClientStage || undefined)}
-                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value="">Todas las etapas</option>
-                <option value="communication">Comunicación</option>
-                <option value="quotation">Presupuesto</option>
-                <option value="deposit">Anticipo</option>
-                <option value="approval">Aprobación</option>
-                <option value="shipping">Despacho</option>
-                <option value="post_sale">Post-venta</option>
-              </select>
-              <select
                 value={selectedAgentId || ''}
                 onChange={(e) => setSelectedAgentId(e.target.value || undefined)}
-                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-700"
               >
                 <option value="">Todos los asesores</option>
                 {agents?.map(agent => (
@@ -229,9 +213,9 @@ export function Clients() {
                   </option>
                 ))}
               </select>
-              <button className="flex items-center px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50">
+              <button className="flex items-center px-4 py-2.5 text-gray-700 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
                 <Filter className="w-5 h-5 mr-2" />
-                Más Filtros
+                Filtros
               </button>
             </div>
           </div>
@@ -243,32 +227,33 @@ export function Clients() {
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nombre</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Empresa</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Marca</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Asesor</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Etapa</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tiempo en Etapa</th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="bg-white divide-y divide-gray-100">
               {isLoading ? (
                 <tr>
-                  <td className="px-6 py-4 whitespace-nowrap text-gray-600" colSpan={8}>
+                  <td className="px-6 py-8 whitespace-nowrap text-gray-600" colSpan={6}>
                     <div className="flex items-center justify-center">
-                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
                     </div>
                   </td>
                 </tr>
               ) : filteredClients.length === 0 ? (
                 <tr>
-                  <td className="px-6 py-4 whitespace-nowrap text-gray-600" colSpan={8}>
-                    No se encontraron clientes
+                  <td className="px-6 py-8 whitespace-nowrap text-gray-600" colSpan={6}>
+                    <div className="text-center">
+                      <p className="text-gray-500 font-medium">No se encontraron clientes</p>
+                      <p className="text-gray-400 text-sm mt-1">Intenta con otros filtros o agrega un nuevo cliente</p>
+                    </div>
                   </td>
                 </tr>
               ) : (
                 filteredClients.map((client) => (
-                  <tr key={client.id} className="hover:bg-gray-50">
+                  <tr key={client.id} className="hover:bg-gray-50 transition-colors">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center space-x-2">
                         <button
@@ -293,42 +278,38 @@ export function Clients() {
                         </button>
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-4 py-4 max-w-[200px]">
                       <div>
-                        <div className="font-medium text-gray-900">{client.name}</div>
-                        <div className="text-sm text-gray-500">{client.email}</div>
+                        <div className="font-medium text-gray-900 truncate" title={client.name}>{client.name}</div>
+                        <div className="text-sm text-gray-500 truncate" title={client.email}>{client.email}</div>
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-gray-600">
-                      {client.company}
+                    <td className="px-4 py-4 max-w-[150px]">
+                      <div className="truncate text-gray-600" title={client.brand || '-'}>
+                        {client.brand || '-'}
+                      </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-gray-600">
-                      {client.brand}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-4 py-4 max-w-[180px]">
                       <div className="flex items-center">
-                        <UserCircle2 className="w-5 h-5 text-gray-400 mr-2" />
-                        <span className="text-sm text-gray-900">
+                        <UserCircle2 className="w-5 h-5 text-gray-400 mr-2 flex-shrink-0" />
+                        <span className="text-sm text-gray-900 truncate" title={getAssignedAgentName(client.assigned_agent_id)}>
                           {getAssignedAgentName(client.assigned_agent_id)}
                         </span>
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${statusColors[client.status]}`}>
-                        {statusText[client.status]}
+                    <td className="px-4 py-4 whitespace-nowrap">
+                      <span className={`px-2.5 py-1 text-xs font-medium rounded-full ${
+                        statusColors[client.status as ClientStatus]
+                      }`}>
+                        {statusText[client.status as ClientStatus]}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      {client.current_stage && (
-                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${stageColors[client.current_stage]}`}>
-                          {stageText[client.current_stage]}
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-4 py-4 max-w-[140px]">
                       <div className="flex items-center text-gray-600">
-                        <Clock className="w-4 h-4 mr-1" />
-                        {getStageTime(client)}
+                        <Clock className="w-4 h-4 mr-1 flex-shrink-0" />
+                        <span className="truncate" title={getStageTime(client)}>
+                          {getStageTime(client)}
+                        </span>
                       </div>
                     </td>
                   </tr>
@@ -342,7 +323,11 @@ export function Clients() {
       <ClientModal
         isOpen={showModal}
         onClose={() => setShowModal(false)}
-        onSubmit={handleCreateClient}
+        onSubmit={(data) => {
+          // Convertimos explícitamente al tipo esperado
+          const typedData = data as unknown as ClientInsert;
+          handleCreateClient(typedData);
+        }}
         isSubmitting={isCreating}
       />
 
