@@ -5,7 +5,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: pedroconda/crm-probolsas:debug  # Cambiar tag para forzar reconstrucción
+    image: pedroconda/crm-probolsas  # Usar imagen existente sin tag específico
     command: ["sh", "-c", "ls -la && echo 'Iniciando servidor en modo debug' && node server.js"]  # Comando de depuración
     networks:
       - probolsas
