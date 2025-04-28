@@ -1,4 +1,4 @@
-FROM node:18-alpine
+FROM node:18
 
 WORKDIR /app
 
@@ -8,12 +8,18 @@ COPY package.json ./
 COPY server.js ./
 COPY verify-server.sh ./
 
-# Instalar solo express y compression, y herramientas de diagnóstico
+# Instalar dependencias y herramientas de diagnóstico
 RUN npm install express compression && \
-    apk add --no-cache curl procps net-tools bash && \
-    chmod +x verify-server.sh
+    apt-get update && \
+    apt-get install -y curl procps net-tools && \
+    chmod +x verify-server.sh && \
+    echo "Instalación completada"
+
+# Verificar contenido del directorio
+RUN ls -la && \
+    echo "Contenido de dist:" && \
+    ls -la dist/ || echo "Directorio dist vacío o no existe"
 
 EXPOSE 3000
 
-# Comando simple y directo
-CMD ["node", "server.js"]
+# No definimos CMD aquí, lo definimos en docker-compose.yml

@@ -5,7 +5,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: pedroconda/crm-probolsas:simple
+    image: pedroconda/crm-probolsas:debug  # Cambiar tag para forzar reconstrucción
+    command: ["sh", "-c", "ls -la && echo 'Iniciando servidor en modo debug' && node server.js"]  # Comando de depuración
     networks:
       - probolsas
     ports:
@@ -17,8 +18,18 @@ services:
         - "traefik.http.routers.crm.entrypoints=websecure"
         - "traefik.http.routers.crm.tls.certresolver=letsencrypt"
         - "traefik.http.services.crm.loadbalancer.server.port=3000"
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 120s
     env_file:
       - .env.production  # Usamos el archivo .env.production que ya existe
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
 networks:
   probolsas:
