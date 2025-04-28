@@ -5,8 +5,10 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: pedroconda/crm-probolsas:latest
-    command: node server.js  # Especificar comando de inicio explícitamente
+      args:
+        REBUILD_DATE: "2025-04-28-${RANDOM}"  # Fecha actual con valor aleatorio
+    image: pedroconda/crm-probolsas:v2  # Cambiar tag para forzar reconstrucción
+    command: ./start.sh  # Usar script de inicio con diagnóstico
     networks:
       - probolsas
     deploy:
