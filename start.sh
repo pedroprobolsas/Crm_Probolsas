@@ -1,19 +1,53 @@
 #!/bin/bash
-# Script de inicio para la aplicación CRM Probolsas
+# Script de inicio para el contenedor
 
-echo "Iniciando servidor CRM Probolsas..."
+echo "=== Iniciando servidor CRM Probolsas ==="
 echo "Fecha y hora: $(date)"
 echo "Directorio actual: $(pwd)"
-echo "Contenido del directorio:"
+
+# Verificar si el directorio dist existe
+if [ ! -d "./dist" ]; then
+  echo "ERROR: El directorio dist/ no existe."
+  echo "Contenido del directorio actual:"
+  ls -la
+  echo "Asegúrate de que el directorio dist/ esté presente y contenga los archivos compilados."
+  exit 1
+fi
+
+# Verificar si hay archivos en el directorio dist
+if [ -z "$(ls -A ./dist)" ]; then
+  echo "ERROR: El directorio dist/ está vacío."
+  echo "Asegúrate de compilar la aplicación antes de iniciar el servidor."
+  exit 1
+fi
+
+# Verificar si existe el archivo server.js
+if [ ! -f "./server.js" ]; then
+  echo "ERROR: El archivo server.js no existe."
+  echo "Contenido del directorio actual:"
+  ls -la
+  echo "Asegúrate de que el archivo server.js esté presente."
+  exit 1
+fi
+
+# Verificar si existe el archivo package.json
+if [ ! -f "./package.json" ]; then
+  echo "ERROR: El archivo package.json no existe."
+  echo "Contenido del directorio actual:"
+  ls -la
+  echo "Asegúrate de que el archivo package.json esté presente."
+  exit 1
+fi
+
+# Mostrar información de diagnóstico
+echo "Contenido del directorio actual:"
 ls -la
 
-echo "Verificando existencia de server.js:"
-if [ -f "server.js" ]; then
-    echo "server.js encontrado, iniciando aplicación..."
-    node server.js
-else
-    echo "ERROR: server.js no encontrado!"
-    echo "Contenido del directorio:"
-    ls -la
-    exit 1
-fi
+echo "Contenido del directorio dist:"
+ls -la ./dist
+
+echo "Verificando dependencias instaladas:"
+npm list --depth=0
+
+echo "=== Iniciando servidor... ==="
+node server.js
