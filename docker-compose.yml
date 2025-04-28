@@ -2,37 +2,23 @@ version: '3.8'
 
 services:
   crm-app:
-    image: node:18-slim
-    volumes:
-      - ./dist:/app/dist
-      - ./server.js:/app/server.js
-      - ./package.json:/app/package.json
-      - ./start.sh:/app/start.sh
-      - ./verify-server.sh:/app/verify-server.sh
-    command: sh -c "cd /app && npm install express compression && apt-get update && apt-get install -y curl procps net-tools && chmod +x /app/start.sh && chmod +x /app/verify-server.sh && /app/start.sh"
+    image: nginx:alpine  # Imagen muy ligera y confiable
+    ports:
+      - "3000:80"  # Nginx usa el puerto 80 por defecto
     networks:
       - probolsas
-    ports:
-      - "3000:3000"  # Exponer el puerto directamente para pruebas
     deploy:
       labels:
         - "traefik.enable=true"
         - "traefik.http.routers.crm.rule=Host(`ippcrm.probolsas.co`)"
         - "traefik.http.routers.crm.entrypoints=websecure"
         - "traefik.http.routers.crm.tls.certresolver=letsencrypt"
-        - "traefik.http.services.crm.loadbalancer.server.port=3000"
+        - "traefik.http.services.crm.loadbalancer.server.port=80"
       restart_policy:
         condition: on-failure
         delay: 5s
         max_attempts: 3
         window: 120s
-    env_file:
-      - .env.production  # Usamos el archivo .env.production que ya existe
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
 
 networks:
   probolsas:
