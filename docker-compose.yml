@@ -6,6 +6,7 @@ services:
       context: .
       dockerfile: Dockerfile
     image: pedroconda/crm-probolsas:latest
+    command: node server.js  # Especificar comando de inicio explícitamente
     networks:
       - probolsas
     deploy:
