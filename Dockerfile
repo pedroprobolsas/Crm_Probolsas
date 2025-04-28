@@ -30,4 +30,4 @@ EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
   CMD node health-check.js || exit 1
 
-CMD ["npm", "start"]
+CMD ["node", "server.js"]
