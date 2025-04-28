@@ -2,10 +2,14 @@ version: '3.8'
 
 services:
   crm-app:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    # No especificamos una imagen externa, usamos la construcción local
+    image: node:18-slim
+    volumes:
+      - ./dist:/app/dist
+      - ./server.js:/app/server.js
+      - ./package.json:/app/package.json
+      - ./start.sh:/app/start.sh
+      - ./verify-server.sh:/app/verify-server.sh
+    command: sh -c "cd /app && npm install express compression && apt-get update && apt-get install -y curl procps net-tools && chmod +x /app/start.sh && chmod +x /app/verify-server.sh && /app/start.sh"
     networks:
       - probolsas
     ports:
