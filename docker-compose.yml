@@ -5,12 +5,11 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-      args:
-        REBUILD_DATE: "2025-04-28-${RANDOM}"  # Fecha actual con valor aleatorio
-    image: pedroconda/crm-probolsas:v2  # Cambiar tag para forzar reconstrucción
-    command: ./start.sh  # Usar script de inicio con diagnóstico
+    image: pedroconda/crm-probolsas:simple
     networks:
       - probolsas
+    ports:
+      - "3000:3000"  # Exponer el puerto directamente para pruebas
     deploy:
       labels:
         - "traefik.enable=true"
