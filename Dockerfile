@@ -17,6 +17,7 @@ WORKDIR /app
 
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/package*.json ./
+COPY --from=builder /app/server.js ./
 COPY health-check.js ./
 
 RUN npm install --only=production
