@@ -2,27 +2,19 @@ version: '3.8'
 
 services:
   crm-app:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    image: crm-probolsas:latest
-    ports:
-      - "3000:3000"
+    # Usar directamente una imagen oficial de Nginx - extremadamente confiable
+    image: nginx:alpine
+    # Configuración mínima - solo lo esencial
     networks:
       - probolsas
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 10s
+    # Configuración de Traefik para enrutamiento
     deploy:
       labels:
         - "traefik.enable=true"
         - "traefik.http.routers.crm.rule=Host(`ippcrm.probolsas.co`)"
         - "traefik.http.routers.crm.entrypoints=websecure"
         - "traefik.http.routers.crm.tls.certresolver=letsencrypt"
-        - "traefik.http.services.crm.loadbalancer.server.port=3000"
+        - "traefik.http.services.crm.loadbalancer.server.port=80"
       restart_policy:
         condition: on-failure
         delay: 5s
