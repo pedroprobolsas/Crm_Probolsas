@@ -2,14 +2,14 @@ version: '3.8'
 
 services:
   crm-app:
-    # Construir la imagen a partir del Dockerfile
-    build:
-      context: .
-      dockerfile: Dockerfile
-    # Sin volúmenes - todo está incluido en la imagen
+    image: nginx:alpine
+    configs:
+      - source: nginx_conf
+        target: /etc/nginx/conf.d/default.conf
+      - source: app_content
+        target: /usr/share/nginx/html/index.html
     networks:
       - probolsas
-    # Configuración de Traefik para enrutamiento
     deploy:
       labels:
         - "traefik.enable=true"
@@ -17,11 +17,12 @@ services:
         - "traefik.http.routers.crm.entrypoints=websecure"
         - "traefik.http.routers.crm.tls.certresolver=letsencrypt"
         - "traefik.http.services.crm.loadbalancer.server.port=80"
-      restart_policy:
-        condition: on-failure
-        delay: 5s
-        max_attempts: 3
-        window: 120s
+
+configs:
+  nginx_conf:
+    file: ./nginx.conf
+  app_content:
+    file: ./dist/index.html
 
 networks:
   probolsas:
