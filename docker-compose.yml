@@ -3,12 +3,15 @@ version: '3.8'
 services:
   crm-app:
     image: nginx:alpine  # Imagen muy ligera y confiable
-    volumes:
-      - ./dist:/usr/share/nginx/html  # Montar la carpeta dist como contenido estático
+    # Eliminamos los volúmenes que están causando problemas
     ports:
       - "3000:80"  # Nginx usa el puerto 80 por defecto
     networks:
       - probolsas
+    # Usamos configs para inyectar el archivo index.html
+    configs:
+      - source: index_html
+        target: /usr/share/nginx/html/index.html
     deploy:
       labels:
         - "traefik.enable=true"
@@ -21,6 +24,105 @@ services:
         delay: 5s
         max_attempts: 3
         window: 120s
+
+# Definimos la configuración para el archivo index.html
+configs:
+  index_html:
+    content: |
+      <!DOCTYPE html>
+      <html lang="es">
+      <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>CRM Probolsas - Prueba de Despliegue</title>
+          <style>
+              body {
+                  font-family: Arial, sans-serif;
+                  line-height: 1.6;
+                  margin: 0;
+                  padding: 20px;
+                  color: #333;
+                  background-color: #f5f5f5;
+              }
+              .container {
+                  max-width: 800px;
+                  margin: 0 auto;
+                  background-color: white;
+                  padding: 30px;
+                  border-radius: 8px;
+                  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+              }
+              h1 {
+                  color: #0066cc;
+                  margin-top: 0;
+                  border-bottom: 2px solid #eee;
+                  padding-bottom: 10px;
+              }
+              .success-message {
+                  background-color: #d4edda;
+                  color: #155724;
+                  padding: 15px;
+                  border-radius: 4px;
+                  margin-bottom: 20px;
+              }
+              .info-section {
+                  margin-top: 30px;
+              }
+              .info-section h2 {
+                  color: #0066cc;
+                  font-size: 1.3em;
+              }
+              .info-item {
+                  margin-bottom: 10px;
+              }
+              .info-label {
+                  font-weight: bold;
+              }
+              .next-steps {
+                  margin-top: 30px;
+                  background-color: #e7f3ff;
+                  padding: 15px;
+                  border-radius: 4px;
+              }
+          </style>
+      </head>
+      <body>
+          <div class="container">
+              <h1>CRM Probolsas</h1>
+              
+              <div class="success-message">
+                  ¡Felicidades! El despliegue con configs está funcionando correctamente.
+              </div>
+              
+              <p>Esta página de prueba confirma que:</p>
+              <ul>
+                  <li>El contenedor de Nginx se ha iniciado correctamente</li>
+                  <li>Las configs de Docker Swarm están funcionando correctamente</li>
+                  <li>Traefik está enrutando correctamente el tráfico</li>
+              </ul>
+              
+              <div class="info-section">
+                  <h2>Información del Despliegue</h2>
+                  <div class="info-item">
+                      <span class="info-label">Imagen Docker:</span> nginx:alpine
+                  </div>
+                  <div class="info-item">
+                      <span class="info-label">Configuración:</span> Usando configs de Docker Swarm
+                  </div>
+              </div>
+              
+              <div class="next-steps">
+                  <h2>Próximos Pasos</h2>
+                  <p>Ahora que hemos confirmado que las configs funcionan correctamente, podemos proceder al siguiente paso:</p>
+                  <ol>
+                      <li>Cambiar a una imagen de Node.js</li>
+                      <li>Servir el contenido con Express</li>
+                      <li>Añadir más funcionalidades gradualmente</li>
+                  </ol>
+              </div>
+          </div>
+      </body>
+      </html>
 
 networks:
   probolsas:
