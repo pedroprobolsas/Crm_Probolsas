@@ -2,34 +2,28 @@ version: '3.8'
 
 services:
   crm-app:
-    # Solución más simple y directa: usar una imagen oficial de Node.js
-    image: node:18-slim
-    # Comando para iniciar un servidor HTTP simple
-    # Escapamos el símbolo $ con otro $ para evitar la interpolación de Docker Compose
-    command: >
-      sh -c "echo '<!DOCTYPE html>
-      <html>
-      <head>
-          <title>CRM Probolsas</title>
-          <style>
-              body { font-family: Arial; margin: 40px; line-height: 1.6; }
-              h1 { color: #0066cc; }
-              .success { background: #d4edda; color: #155724; padding: 15px; border-radius: 4px; }
-          </style>
-      </head>
-      <body>
-          <h1>CRM Probolsas - Servidor Funcionando</h1>
-          <div class=\"success\">
-              ¡El servidor Node.js está funcionando correctamente!
-          </div>
-          <p>Esta es una página de prueba servida directamente desde un servidor Node.js.</p>
-          <p>Fecha y hora del servidor: $$(date)</p>
-      </body>
-      </html>' > index.html && npm install -g http-server && http-server -p 3000"
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: pedroconda/crm-probolsas:production
     ports:
       - "3000:3000"
     networks:
       - probolsas
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      # Variables de entorno para Supabase (comentadas por defecto)
+      # - SUPABASE_URL=https://your-project.supabase.co
+      # - SUPABASE_KEY=your-supabase-key
+    env_file:
+      - .env.production
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
     deploy:
       labels:
         - "traefik.enable=true"
@@ -38,10 +32,22 @@ services:
         - "traefik.http.routers.crm.tls.certresolver=letsencrypt"
         - "traefik.http.services.crm.loadbalancer.server.port=3000"
       restart_policy:
-        condition: on-failure
+        condition: any
         delay: 5s
-        max_attempts: 3
+        max_attempts: 5
         window: 120s
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.1'
+          memory: 128M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
 networks:
   probolsas:
