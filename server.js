@@ -2,7 +2,6 @@ const express = require('express');
 const compression = require('compression');
 const path = require('path');
 const fs = require('fs');
-const { createClient } = require('@supabase/supabase-js');
 
 // Configuración de la aplicación
 const app = express();
@@ -10,20 +9,6 @@ const PORT = process.env.PORT || 3000;
 
 // Middleware para compresión
 app.use(compression());
-
-// Middleware para parsear JSON
-app.use(express.json());
-
-// Configuración de Supabase (si las variables de entorno están disponibles)
-let supabase = null;
-if (process.env.SUPABASE_URL && process.env.SUPABASE_KEY) {
-  try {
-    supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
-    console.log('Conexión a Supabase configurada correctamente');
-  } catch (error) {
-    console.error('Error al configurar Supabase:', error.message);
-  }
-}
 
 // Verificar si el directorio dist existe
 const distPath = path.join(__dirname, 'dist');
@@ -69,7 +54,6 @@ if (!fs.existsSync(distPath)) {
             <ul>
                 <li>Node.js: ${process.version}</li>
                 <li>Express: ${require('express/package.json').version}</li>
-                <li>Supabase: ${supabase ? 'Conectado' : 'No configurado'}</li>
             </ul>
         </div>
     </body>
@@ -87,51 +71,12 @@ if (!fs.existsSync(distPath)) {
 // Servir archivos estáticos desde la carpeta dist
 app.use(express.static(distPath));
 
-// API endpoints
-app.get('/api/health', (req, res) => {
-  const health = {
-    status: 'ok',
-    timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV || 'development',
-    supabase: supabase ? 'connected' : 'not_configured'
-  };
-  
-  res.status(200).json(health);
-});
-
-// API para verificar la conexión a Supabase (si está configurada)
-app.get('/api/supabase-status', async (req, res) => {
-  if (!supabase) {
-    return res.status(500).json({ 
-      status: 'error', 
-      message: 'Supabase no está configurado. Verifica las variables de entorno SUPABASE_URL y SUPABASE_KEY.' 
-    });
-  }
-  
-  try {
-    // Intentar una operación simple para verificar la conexión
-    const { data, error } = await supabase.from('clients').select('id').limit(1);
-    
-    if (error) {
-      return res.status(500).json({ 
-        status: 'error', 
-        message: 'Error al conectar con Supabase', 
-        error: error.message 
-      });
-    }
-    
-    return res.status(200).json({ 
-      status: 'ok', 
-      message: 'Conexión a Supabase establecida correctamente',
-      data: { recordsFound: data.length }
-    });
-  } catch (error) {
-    return res.status(500).json({ 
-      status: 'error', 
-      message: 'Error inesperado al verificar la conexión a Supabase', 
-      error: error.message 
-    });
-  }
+// Endpoint simple para verificar el estado del servidor
+app.get('/health', (req, res) => {
+  res.status(200).json({ 
+    status: 'ok', 
+    timestamp: new Date().toISOString() 
+  });
 });
 
 // Manejar todas las rutas para SPA (Single Page Application)
@@ -146,10 +91,8 @@ const server = app.listen(PORT, () => {
   CRM Probolsas - Servidor Iniciado
 ========================================
 - Puerto: ${PORT}
-- Modo: ${process.env.NODE_ENV || 'development'}
 - Fecha y hora: ${new Date().toISOString()}
 - Directorio estático: ${distPath}
-- Supabase: ${supabase ? 'Configurado' : 'No configurado'}
 ========================================
   `);
   
@@ -180,15 +123,4 @@ process.on('SIGINT', () => {
     console.log('Servidor cerrado correctamente');
     process.exit(0);
   });
-});
-
-// Manejar errores no capturados
-process.on('uncaughtException', (error) => {
-  console.error('Error no capturado:', error);
-  // Mantener el servidor en ejecución a pesar del error
-});
-
-process.on('unhandledRejection', (reason, promise) => {
-  console.error('Promesa rechazada no manejada:', reason);
-  // Mantener el servidor en ejecución a pesar del error
 });
