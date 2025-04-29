@@ -4,6 +4,10 @@ services:
   crm-app:
     # Usar directamente una imagen oficial de Nginx - extremadamente confiable
     image: nginx:alpine
+    # Montar la carpeta dist como contenido estático y la configuración personalizada
+    volumes:
+      - ./dist:/usr/share/nginx/html
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf
     # Configuración mínima - solo lo esencial
     networks:
       - probolsas
