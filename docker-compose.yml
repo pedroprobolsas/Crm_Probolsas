@@ -3,6 +3,8 @@ version: '3.8'
 services:
   crm-app:
     image: nginx:alpine  # Imagen muy ligera y confiable
+    volumes:
+      - ./dist:/usr/share/nginx/html  # Montar la carpeta dist como contenido estático
     ports:
       - "3000:80"  # Nginx usa el puerto 80 por defecto
     networks:
