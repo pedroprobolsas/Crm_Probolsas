@@ -5,6 +5,7 @@ services:
     # Solución más simple y directa: usar una imagen oficial de Node.js
     image: node:18-slim
     # Comando para iniciar un servidor HTTP simple
+    # Escapamos el símbolo $ con otro $ para evitar la interpolación de Docker Compose
     command: >
       sh -c "echo '<!DOCTYPE html>
       <html>
@@ -22,9 +23,9 @@ services:
               ¡El servidor Node.js está funcionando correctamente!
           </div>
           <p>Esta es una página de prueba servida directamente desde un servidor Node.js.</p>
-          <p>Fecha y hora del servidor: $(date)</p>
+          <p>Fecha y hora del servidor: $$(date)</p>
       </body>
-      </html>' > index.html && npx http-server -p 3000"
+      </html>' > index.html && npm install -g http-server && http-server -p 3000"
     ports:
       - "3000:3000"
     networks:
