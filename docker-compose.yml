@@ -2,13 +2,11 @@ version: '3.8'
 
 services:
   crm-app:
-    # Usar directamente una imagen oficial de Nginx - extremadamente confiable
-    image: nginx:alpine
-    # Montar la carpeta dist como contenido estático y la configuración personalizada
-    volumes:
-      - ./dist:/usr/share/nginx/html
-      - ./nginx.conf:/etc/nginx/conf.d/default.conf
-    # Configuración mínima - solo lo esencial
+    # Construir la imagen a partir del Dockerfile
+    build:
+      context: .
+      dockerfile: Dockerfile
+    # Sin volúmenes - todo está incluido en la imagen
     networks:
       - probolsas
     # Configuración de Traefik para enrutamiento

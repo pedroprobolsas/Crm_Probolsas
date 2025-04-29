@@ -1,23 +1,12 @@
-FROM node:18-slim
+FROM nginx:alpine
 
-WORKDIR /app
+# Copiar los archivos de la aplicación
+COPY dist/ /usr/share/nginx/html/
 
-# Instalar herramientas básicas y dependencias
-RUN apt-get update && \
-    apt-get install -y curl procps net-tools && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
-
-# Copiar solo los archivos necesarios
-COPY dist/ ./dist/
-COPY server.js ./
-COPY package.json ./
-
-# Instalar dependencias mínimas
-RUN npm install express compression
+# Copiar la configuración de Nginx
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 # Exponer el puerto
-EXPOSE 3000
+EXPOSE 80
 
-# Comando para iniciar el servidor
-CMD ["node", "server.js"]
+# El comando por defecto de la imagen nginx:alpine es iniciar nginx
