@@ -2,7 +2,9 @@ version: '3.8'
 
 services:
   crm-app:
-    build: .
+    # Usar una imagen preexistente de Docker Hub
+    image: pedroconda/crm-probolsas:latest
+    # Sin configs, sin volumes, sin build
     networks:
       - probolsas
     deploy:
