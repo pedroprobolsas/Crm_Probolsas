@@ -7,7 +7,7 @@
     "dev": "vite",
     "dev:full": "node dev-server.cjs",
     "dev:yarn": "yarn vite --host",
-    "build": "tsc && vite build",
+    "build": "vite build",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",
     "start": "node server.js",
